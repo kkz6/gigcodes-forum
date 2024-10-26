@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e  # exit immediately if a command exits with a non-zero status
+
+# File permissions
+chown -R "$USER":"$USER" "$WORKING_DIR"
+chmod -R g+w "$WORKING_DIR"
+
+# Set minimum-stability to dev
+composer config minimum-stability dev
+
+# Set prefer-stable to true
+composer config prefer-stable true
+
+# Download dependencies
+composer install --optimize-autoloader --no-interaction --no-progress
+
+# Install Flarum if not already installed
+# by checking for the existence of config.php
+if [ ! -f config.php ];
+  cp .config.php config.php
+  # run database changes
+  php flarum migrate
+  # clear the cachecd
+  php flarum cache:clear
+
+  if [ -d vendor/blomstra/cache-assets ]
+  then
+      # precompile new and invalidate old assets
+      php flarum cache:assets --css --js --locales > /dev/null 2>&1
+  fi
+then
+    # run database changes
+    php flarum migrate
+    # clear the cachecd
+    php flarum cache:clear
+
+    if [ -d vendor/blomstra/cache-assets ]
+    then
+        # precompile new and invalidate old assets
+        php flarum cache:assets --css --js --locales > /dev/null 2>&1
+    fi
+fi
+
+# PHP-FPM
+exec "$@"
